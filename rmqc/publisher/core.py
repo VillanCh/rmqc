@@ -11,7 +11,10 @@ try:
 except:
     import Queue as queue
 
+import time
+import warnings
 import logging
+import traceback
 import threading
 
 import pika
@@ -34,6 +37,7 @@ class Publisher(object):
         self.exchanges = {}
 
         self._working = True
+        self._retry_interval = default_config.get_retry_interval()
         
         logger.debug('init success')
     
@@ -48,7 +52,9 @@ class Publisher(object):
     
     def _connect(self):
         """"""
+        logger.debug('connecting to {}'.format(self.pika_connection_params))
         connection = pika.BlockingConnection(self.pika_connection_params)
+        logger.debug('connected.')
         return connection
     
     def _get_channel(self, connection):
@@ -56,6 +62,7 @@ class Publisher(object):
         assert isinstance(connection, pika.BlockingConnection), \
                'not a valid connection'
         
+        logger.debug('getting channel.')
         channel = connection.channel()
         
         # declare exchange
@@ -68,32 +75,50 @@ class Publisher(object):
                 exchange_type=etype,
                 **declare_config
             )
+            logger.debug('declare exchange: {}:{} with {}'.format(exchange, etype, \
+                                                                  declare_config))
             
         # start confirm
+        logger.debug('start confirming delivery')
         channel.confirm_delivery()
         
+        logger.debug('finished the channel')
         return channel
     
     def _mainloop(self):
         """"""
-        channel = self._get_channel(self._connect())
+        connection = self.connection = self._connect()
+        channel = self.channel = self._get_channel(connection)
         
         self._working = True
         
+        logger.debug('entering the mainloop')
         while self._working:
             if self._msg_queue.empty():
                 continue
             
             msg = self._msg_queue.get()
             ename, rkey, body, config = msg
-            if channel.basic_publish(ename, rkey, body,
-                                     properties=config):
+            
+            try:
+                delivery_flag = channel.basic_publish(ename, rkey, body,
+                                                      properties=config)
+            except Exception as e:
+                self._msg_queue.put(msg)
+                raise e
+            
+            # ack publisher
+            if delivery_flag:
                 logger.debug('publish success for msg: {}'\
                              .format(msg))
             else:
                 logger.debug('failed to publish: {}, requeue.'\
                              .format(msg))
                 self._msg_queue.put(msg)
+        
+        channel.close()
+        connection.close()
+        
     
     def publish(self, exchange, routing_key, message, **properties):
         """"""
@@ -107,7 +132,24 @@ class Publisher(object):
     def serve(self):
         """"""
         logger.debug('starting serving the publisher.')
-        self._mainloop()
+        while True:
+            try:
+                self._mainloop()
+                break
+            except Exception as e:
+                warnings.warn(traceback.format_exc())
+                
+                logger.info('closing the connection and channel')
+                try:
+                    self.channel.close()
+                    self.connection.close()
+                except:
+                    pass
+                
+                logger.warning('reconnecting in {} seconds.'\
+                               .format(self._retry_interval))
+                
+                time.sleep(self._retry_interval)
         logger.debug('stopped serving the publisher')
         
     def serve_as_thread(self):
@@ -122,4 +164,12 @@ class Publisher(object):
     
     def stop(self):
         """"""
-        self._working = False
+        if hasattr(self, 'publishing_thread'):
+            thd = getattr(self, 'publishing_thread')
+            if isinstance(thd, threading.Thread):
+                if thd.is_alive():
+                    self._working = False
+                    try:
+                        self.publishing_thread.join()
+                    except:
+                        pass

@@ -20,11 +20,11 @@ class PublisherTester(unittest.TestCase):
         publisher.add_exchange("testexchange", "direct")
         publisher.serve_as_thread()
         
-        for i in range(10):
+        for i in range(4):
             publisher.feed(message='testmessage-{}', 
                            exchange='testexchange', 
                            routing_key='testkey')
-            time.sleep(0.2)
+            
         
         time.sleep(1)
         publisher.stop()

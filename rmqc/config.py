@@ -17,7 +17,7 @@ KW_RMQC_EXTRA_CONFIG = 'rmqc_extra_config'
 _DEFAULT_CONFIG = {
     'host': '127.0.0.1',
     'port': 5672,
-    'virtual_host': 'rmqc',
+    'virtual_host': 'rabbitvhost',
     'username': 'guest',
     'password': 'guest',
     
@@ -26,7 +26,9 @@ _DEFAULT_CONFIG = {
     KW_CONNECTION_EXTRA_CONFIG: {},
     
     # used by rmqc (not for pika)
-    KW_RMQC_EXTRA_CONFIG: {}
+    KW_RMQC_EXTRA_CONFIG: {
+        'connection_retry_interval': 1,
+    }
 }
 
 class RmqConfig(object):
@@ -62,7 +64,7 @@ class RmqConfig(object):
         
         host = self.__config.get('host', '127.0.0.1')
         port = self.__config.get('port', 5672)
-        virtual_host = self.__config.get('virtual_host', 'rmqc')
+        virtual_host = self.__config.get('virtual_host', 'rabbitvhost')
         conn_ec = self.__config.get(KW_CONNECTION_EXTRA_CONFIG, {})
         
         pika_param = pika.ConnectionParameters(
@@ -77,7 +79,7 @@ class RmqConfig(object):
     
     @classmethod
     def update_from(cls, host='127.0.0.1', port=5672,
-                    virtual_host='rmqc', username='guest',
+                    virtual_host='rabbitvhost', username='guest',
                     password='guest', 
                     connection_extra_config={}, 
                     rmqc_extra_config={}):
@@ -88,6 +90,14 @@ class RmqConfig(object):
                    password=password,
                    connection_extra_config=connection_extra_config,
                    rmqc_extra_config=rmqc_extra_config)
+
+    def get_retry_interval(self):
+        """"""
+        cfg = self.__config.get(KW_RMQC_EXTRA_CONFIG)
+        interval = cfg.get('connection_retry_interval')
+        
+        assert isinstance(interval, (int, float))
+        return interval
     
 
 def get_config(filename=None):
