@@ -1,21 +1,30 @@
 #!/usr/bin/env python
 #coding:utf-8
 """
-  Author:  v1ll4n --<chaitin>
-  Purpose: 
-  Created: 10/01/17
+  Author:  v1ll4n --<>
+  Purpose: MessageGetter
+  Created: 10/02/17
 """
 
+import time
 import pika
 import logging
+import traceback
 
-from ..common import RMQCEXIF
+from ..common import RMQCBase
 
 logger = logging.getLogger('root.{}'.format(__name__))
 
-class Consumer(RMQCEXIF):
+class MessageGetter(RMQCBase):
     """"""
     
+    def _reset_channel(self):
+        """"""
+        logger.info('resetting channel...')
+        self.connection = self._connect()
+        self.channel = self._get_channel(self.connection)
+        
+
     @property
     def queue_name(self):
         """"""
@@ -23,6 +32,11 @@ class Consumer(RMQCEXIF):
     
     def _initial(self):
         """"""
+        # init channel and connection
+        self.channel = None
+        self.connection = None
+        
+        # init exchange config
         self._queue_config = {}
         self._queue_bindings = []
         self._callback_table = {}
@@ -87,87 +101,77 @@ class Consumer(RMQCEXIF):
         }
         
         self._queue_config.update(queue_declare_config)
-    
-    def _mainloop(self):
+
+    def get(self, no_ack=False, retry_times=5, retry_timeout=0.5):
         """"""
-        connection = self.connection = self._connect()
-        channel = self.channel = self._get_channel(connection)
+        if not self.channel:
+            self._reset_channel()
         
-        self._working = True
-        
-        logger.debug('entering the mainloop')
-        channel.basic_consume(self._default_callback, self.queue_name)
-        channel.start_consuming()
-        
-        logger.debug('stopped the consuming')
-        channel.close()
-        connection.close()
+        for _ in range(retry_times):
+            try:
+                msg = self.channel.basic_get(self.queue_name, no_ack)
+                return msg
+            except Exception as e:
+                # cleaning the old connection
+                try:
+                    self.channel.close()
+                    self.connection.close()
+                except:
+                    pass
+                
+                logger.warning(traceback.format_exc())
+                time.sleep(retry_timeout)
+                
+                # reconnecting
+                try:
+                    self._reset_channel()
+                except:
+                    pass
     
-    def _default_callback(self, ch, mt, pro, body):
+    def ack(self, delivery_tag_or_getOk, multiple=False):
         """"""
-        # collecting basic information
-        exchange = mt.exchange
-        routing_key = mt.routing_key
-        callback = self.get_callback(exchange, routing_key)
-        if callback:
-            ack_flag = callback(mt, pro, body)
-            if ack_flag:
-                self.ack(mt)
-                return
-            else:
-                self.nack(mt)
-                return
+        if not delivery_tag_or_getOk:
+            return False
         
-        self._msg_queue.put((mt, pro, body))
-    
-    def ack(self, method_frame, multiple=False):
-        """"""
+        delivery_tag = delivery_tag_or_getOk if not hasattr(delivery_tag_or_getOk, 'delivery_tag') \
+            else getattr(delivery_tag_or_getOk, 'delivery_tag')
         try:
-            self.channel.basic_ack(method_frame.delivery_tag, multiple)
-            logger.debug('acked the message-{}'.format(method_frame.delivery_tag))
+            self.channel.basic_ack(delivery_tag, multiple)
+            logger.debug('acked the message-{}'.format(delivery_tag))
             return True
         except:
-            logger.debug('ack failed for the message-{}'.format(method_frame.delivery_tag))
+            logger.debug('ack failed for the message-{}'.format(delivery_tag))
             return False
     
-    def nack(self, method_frame, multiple=False, requeue=True):
+    def nack(self, delivery_tag_or_getOk, multiple=False, requeue=True):
         """"""
+        if not delivery_tag_or_getOk:
+            return 
+        
+        delivery_tag = delivery_tag_or_getOk if not hasattr(delivery_tag_or_getOk, 'delivery_tag') \
+            else getattr(delivery_tag_or_getOk, 'delivery_tag')
         try:
-            self.channel.basic_nack(method_frame.delivery_tag, multiple, requeue)
-            logger.debug('reject the message-{}'.format(method_frame.delivery_tag))
+            self.channel.basic_nack(delivery_tag, multiple, requeue)
+            logger.debug('acked the message-{}'.format(delivery_tag))
             return True
         except:
+            logger.debug('ack failed for the message-{}'.format(delivery_tag))
             return False        
+    
+    
+    def close_connection(self):
+        """"""
+        # close connection and reset channel as None
+        try:
+            self.channel.close()
+        except:
+            pass
         
-    
-    def register_callback(self, exchange, routing_key, callback):
-        """"""
-        key = (exchange, routing_key)
-        assert key not in self._callback_table, 'existed callback, you should ' + \
-               'unregister the callback first (if you want to change it.)'
-        
-        self._callback_table[key] = callback
-    
-    def unregister_callback(self, exchange, routing_key):
-        """"""
-        key = (exchange, routing_key)
-        if key in self._callback_table:
-            del self._callback_table[key]
-    
-    def get_callback(self, exchange, routing_key):
-        """"""
-        return self._callback_table.get((exchange, routing_key))
-    
-    def stop(self):
-        """"""
-        logger.debug('stopping consuming.')
-        self._working = False
-        self.channel.stop_consuming()
-    
-    @property
-    def message_queue(self):
-        """"""
-        return self._msg_queue
+        self.channel = None
 
-    
-    
+        try:
+            self.connection.close()
+        except:
+            pass
+        
+        self.connection = None

@@ -9,7 +9,7 @@
 import pika
 import json
 
-default_config = None
+current_config = None
 
 KW_CONNECTION_EXTRA_CONFIG = 'connection_extra_config'
 KW_RMQC_EXTRA_CONFIG = 'rmqc_extra_config'
@@ -112,4 +112,4 @@ def get_config(filename=None):
     
     return RmqConfig.update_from(**params)
 
-default_config = get_config()
+current_config = get_config()

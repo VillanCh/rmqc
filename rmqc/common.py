@@ -19,17 +19,17 @@ import threading
 
 import pika
 
-from .config import default_config
+from .config import current_config
 
 logger = logging.getLogger('root.{}'.format(__name__))
 
-class RMPCIF(object):
+class RMQCBase:
     """"""
 
     def __init__(self):
         """"""
         logger.debug('getting connection params')
-        self.pika_connection_params = default_config.get_connection_param()
+        self.pika_connection_params = current_config.get_connection_param()
         
         logger.debug('init message queue')
         self._msg_queue = queue.Queue()
@@ -37,7 +37,7 @@ class RMPCIF(object):
         self.exchanges = {}
 
         self._working = True
-        self._retry_interval = default_config.get_retry_interval()
+        self._retry_interval = current_config.get_retry_interval()
         
         self._initial()    
         
@@ -67,6 +67,13 @@ class RMPCIF(object):
     def _get_channel(self, connection):
         """"""
         raise NotImplemented()
+    
+    
+
+class RMQCEXIF(RMQCBase):
+    """"""
+
+
     
     def _mainloop(self):
         """"""

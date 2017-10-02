@@ -19,12 +19,11 @@ import threading
 
 import pika
 
-from ..config import default_config
-from ..common import RMPCIF
+from ..common import RMQCEXIF
 
 logger = logging.getLogger('root.{}'.format(__name__))
 
-class Publisher(RMPCIF):
+class Publisher(RMQCEXIF):
     """"""
 
     
