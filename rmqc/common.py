@@ -26,10 +26,13 @@ logger = logging.getLogger('root.{}'.format(__name__))
 class RMQCBase:
     """"""
 
-    def __init__(self):
+    def __init__(self, config=None):
         """"""
+        self.config = config if config else current_config
+        assert isinstance(self.config, type(current_config)), 'not valid config type.'
+        
         logger.debug('getting connection params')
-        self.pika_connection_params = current_config.get_connection_param()
+        self.pika_connection_params = self.config.get_connection_param()
         
         logger.debug('init message queue')
         self._msg_queue = queue.Queue()
@@ -37,7 +40,7 @@ class RMQCBase:
         self.exchanges = {}
 
         self._working = True
-        self._retry_interval = current_config.get_retry_interval()
+        self._retry_interval = self.config.get_retry_interval()
         
         self._initial()    
         
