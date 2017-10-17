@@ -152,7 +152,7 @@ class MessageGetter(RMQCBase):
             else getattr(delivery_tag_or_getOk, 'delivery_tag')
         try:
             self.channel.basic_nack(delivery_tag, multiple, requeue)
-            logger.debug('acked the message-{}'.format(delivery_tag))
+            logger.debug('not acked the message-{}'.format(delivery_tag))
             return True
         except:
             logger.debug('ack failed for the message-{}'.format(delivery_tag))
