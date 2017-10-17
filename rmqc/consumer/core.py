@@ -164,9 +164,27 @@ class Consumer(RMQCEXIF):
     
     def stop(self):
         """"""
-        logger.debug('stopping consuming.')
-        self._working = False
-        self.channel.stop_consuming()
+        try:
+            logger.debug('stopping consuming.')
+            self._working = False
+            self.channel.stop_consuming()
+        except:
+            pass
+        
+        try:
+            self.clear_all()
+        except:
+            pass
+        
+    def clear_all(self):
+        """"""
+        queue_name = self._queue_config.get('queue')
+        
+        for params in self._queue_bindings:
+            self.channel.queue_unbind(queue=queue_name,
+                                      **params)
+        
+        
     
     @property
     def message_queue(self):
