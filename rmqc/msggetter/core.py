@@ -185,7 +185,7 @@ class MessageGetter(RMQCBase):
         """"""
         queue_name = self._queue_config.get('queue')
         
-        for params in self._queue_bindings:
+        for params in self._queue_bindings: 
             self.channel.queue_unbind(queue_name,
                                       **params)
             
