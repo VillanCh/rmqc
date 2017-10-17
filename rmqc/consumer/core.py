@@ -110,15 +110,19 @@ class Consumer(RMQCEXIF):
         routing_key = mt.routing_key
         callback = self.get_callback(exchange, routing_key)
         if callback:
-            ack_flag = callback(mt, pro, body)
+            try:
+                ack_flag = callback(mt, pro, body)
+            except:
+                ack_flag = False
+            
             if ack_flag:
                 self.ack(mt)
                 return
             else:
                 self.nack(mt)
                 return
-        
-        self._msg_queue.put((mt, pro, body))
+        else:
+            self._msg_queue.put((mt, pro, body))
     
     def ack(self, method_frame, multiple=False):
         """"""
