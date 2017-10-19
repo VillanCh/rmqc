@@ -109,6 +109,8 @@ class Consumer(RMQCEXIF):
         exchange = mt.exchange
         routing_key = mt.routing_key
         callback = self.get_callback(exchange, routing_key)
+        
+        logger.debug('consumer got a result: {}'.format(body))
         if callback:
             try:
                 ack_flag = callback(mt, pro, body)
