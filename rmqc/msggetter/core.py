@@ -161,11 +161,6 @@ class MessageGetter(RMQCBase):
     
     def close_connection(self):
         """"""
-        try:
-            self.clear_all()
-        except:
-            pass
-        
         # close connection and reset channel as None
         try:
             self.channel.close()
@@ -185,7 +180,21 @@ class MessageGetter(RMQCBase):
         """"""
         queue_name = self._queue_config.get('queue')
         
-        for params in self._queue_bindings: 
-            self.channel.queue_unbind(queue_name,
-                                      **params)
+        if not self.channel:
+            return
+        
+        try:
+            for params in self._queue_bindings: 
+                if 'queue' in params:
+                    self.channel.queue_unbind(**params)
+                else:
+                    self.channel.queue_unbind(queue_name,
+                                              **params)
+        except Exception as e:
+            traceback.print_exc()
+        
+        try:
+            self.channel.queue_delete(queue_name)
+        except Exception as e:
+            traceback.print_exc()
             
