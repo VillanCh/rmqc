@@ -190,6 +190,11 @@ class Consumer(RMQCEXIF):
     def message_queue(self):
         """"""
         return self._msg_queue
+    
+    @property
+    def working(self):
+        """"""
+        return self._working
 
     
     
