@@ -129,11 +129,16 @@ class Consumer(RMQCEXIF):
     def ack(self, method_frame, multiple=False):
         """"""
         try:
-            self.channel.basic_ack(method_frame.delivery_tag, multiple)
-            logger.debug('acked the message-{}'.format(method_frame.delivery_tag))
+            tag = method_frame.delivery_tag
+        except AttributeError:
+            tag = method_frame
+        
+        try:
+            self.channel.basic_ack(tag, multiple)
+            logger.debug('acked the message-{}'.format(tag))
             return True
         except:
-            logger.debug('ack failed for the message-{}'.format(method_frame.delivery_tag))
+            logger.debug('ack failed for the message-{}'.format(tag))
             return False
     
     def nack(self, method_frame, multiple=False, requeue=True):
