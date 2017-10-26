@@ -37,7 +37,7 @@ class RmqConfig(object):
     #----------------------------------------------------------------------
     def __init__(self, **config):
         """Constructor"""
-        self.__config = _DEFAULT_CONFIG
+        self.config = None
         
         self.connection_ec = config.pop(KW_CONNECTION_EXTRA_CONFIG, {})
         assert isinstance(self.connection_ec, dict)
@@ -45,27 +45,31 @@ class RmqConfig(object):
         self.rmqc_ec = config.pop(KW_RMQC_EXTRA_CONFIG, {})
         assert isinstance(self.rmqc_ec, dict)
         
-        self.__config.update(config)
+        if self.config == None:
+            self.config = {}
+            self.config.update(_DEFAULT_CONFIG)
+        
+        self.config.update(config)
         if self.connection_ec:
-            self.__config[KW_CONNECTION_EXTRA_CONFIG] = self.connection_ec
+            self.config[KW_CONNECTION_EXTRA_CONFIG] = self.connection_ec
         
         if self.rmqc_ec:
-            self.__config[KW_RMQC_EXTRA_CONFIG] = self.rmqc_ec
+            self.config[KW_RMQC_EXTRA_CONFIG] = self.rmqc_ec
     
     def get_connection_param(self):
         """"""
-        user = self.__config.get('username', 'guest')
-        _pass = self.__config.get('password', 'guest')
+        user = self.config.get('username', 'guest')
+        _pass = self.config.get('password', 'guest')
         
         cred = pika.PlainCredentials(
             username=user,
             password=_pass,
         )
         
-        host = self.__config.get('host', '127.0.0.1')
-        port = self.__config.get('port', 5672)
-        virtual_host = self.__config.get('virtual_host', 'rabbitvhost')
-        conn_ec = self.__config.get(KW_CONNECTION_EXTRA_CONFIG, {})
+        host = self.config.get('host', '127.0.0.1')
+        port = self.config.get('port', 5672)
+        virtual_host = self.config.get('virtual_host', 'rabbitvhost')
+        conn_ec = self.config.get(KW_CONNECTION_EXTRA_CONFIG, {})
         
         pika_param = pika.ConnectionParameters(
             host=host,
@@ -93,7 +97,7 @@ class RmqConfig(object):
 
     def get_retry_interval(self):
         """"""
-        cfg = self.__config.get(KW_RMQC_EXTRA_CONFIG)
+        cfg = self.config.get(KW_RMQC_EXTRA_CONFIG)
         interval = cfg.get('connection_retry_interval')
         
         assert isinstance(interval, (int, float))
