@@ -175,3 +175,26 @@ class MessageGetter(RMQCBase):
             pass
         
         self.connection = None
+    
+    def clear_all(self):
+        """"""
+        queue_name = self._queue_config.get('queue')
+        
+        if not self.channel:
+            return
+        
+        try:
+            for params in self._queue_bindings: 
+                if 'queue' in params:
+                    self.channel.queue_unbind(**params)
+                else:
+                    self.channel.queue_unbind(queue_name,
+                                              **params)
+        except Exception as e:
+            traceback.print_exc()
+        
+        try:
+            self.channel.queue_delete(queue_name)
+        except Exception as e:
+            traceback.print_exc()
+            

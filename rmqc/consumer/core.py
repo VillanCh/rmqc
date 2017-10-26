@@ -109,6 +109,8 @@ class Consumer(RMQCEXIF):
         exchange = mt.exchange
         routing_key = mt.routing_key
         callback = self.get_callback(exchange, routing_key)
+        
+        logger.debug('consumer got a result: {}'.format(body))
         if callback:
             try:
                 ack_flag = callback(mt, pro, body)
@@ -127,11 +129,16 @@ class Consumer(RMQCEXIF):
     def ack(self, method_frame, multiple=False):
         """"""
         try:
-            self.channel.basic_ack(method_frame.delivery_tag, multiple)
-            logger.debug('acked the message-{}'.format(method_frame.delivery_tag))
+            tag = method_frame.delivery_tag
+        except AttributeError:
+            tag = method_frame
+        
+        try:
+            self.channel.basic_ack(tag, multiple)
+            logger.debug('acked the message-{}'.format(tag))
             return True
         except:
-            logger.debug('ack failed for the message-{}'.format(method_frame.delivery_tag))
+            logger.debug('ack failed for the message-{}'.format(tag))
             return False
     
     def nack(self, method_frame, multiple=False, requeue=True):
@@ -164,14 +171,37 @@ class Consumer(RMQCEXIF):
     
     def stop(self):
         """"""
-        logger.debug('stopping consuming.')
-        self._working = False
-        self.channel.stop_consuming()
+        try:
+            logger.debug('stopping consuming.')
+            self._working = False
+            self.channel.stop_consuming()
+        except:
+            pass
+        
+        try:
+            self.clear_all()
+        except:
+            pass
+        
+    def clear_all(self):
+        """"""
+        queue_name = self._queue_config.get('queue')
+        
+        for params in self._queue_bindings:
+            self.channel.queue_unbind(queue=queue_name,
+                                      **params)
+        
+        
     
     @property
     def message_queue(self):
         """"""
         return self._msg_queue
+    
+    @property
+    def working(self):
+        """"""
+        return self._working
 
     
     
