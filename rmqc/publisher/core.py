@@ -65,6 +65,7 @@ class Publisher(RMQCEXIF):
         logger.debug('entering the mainloop')
         while self._working:
             if self._msg_queue.empty():
+                time.sleep(0.1)
                 continue
             
             msg = self._msg_queue.get()
