@@ -12,8 +12,10 @@ import logging
 import traceback
 
 from ..common import RMQCBase
+from ..config import log_level
 
 logger = logging.getLogger('root.{}'.format(__name__))
+logger.setLevel(log_level)
 
 class MessageGetter(RMQCBase):
     """"""
