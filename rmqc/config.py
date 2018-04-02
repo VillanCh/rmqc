@@ -8,8 +8,10 @@
 
 import pika
 import json
+import logging
 
 current_config = None
+log_level = logging.INFO
 
 KW_CONNECTION_EXTRA_CONFIG = 'connection_extra_config'
 KW_RMQC_EXTRA_CONFIG = 'rmqc_extra_config'

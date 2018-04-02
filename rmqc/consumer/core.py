@@ -10,8 +10,10 @@ import pika
 import logging
 
 from ..common import RMQCEXIF
+from ..config import log_level
 
 logger = logging.getLogger('root.{}'.format(__name__))
+logger.setLevel(log_level)
 
 class Consumer(RMQCEXIF):
     """"""

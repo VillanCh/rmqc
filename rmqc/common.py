@@ -20,8 +20,10 @@ import threading
 import pika
 
 from .config import current_config
+from .config import log_level
 
 logger = logging.getLogger('root.{}'.format(__name__))
+logger.setLevel(log_level)
 
 class RMQCBase:
     """"""
